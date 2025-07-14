@@ -1,0 +1,87 @@
+services:
+  db:
+    image: postgres:15
+    container_name: my_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: myservice
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: my_rabbitmq
+    ports:
+      - "5672:5672"   # AMQP
+      - "15672:15672" # 관리 콘솔 (http://localhost:15672)
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  redis:
+    image: redis:7
+    container_name: my_redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+  backend:
+    build:
+      context: .
+    container_name: my_fastapi
+    command: >
+      bash -c "
+        ./scripts/wait-for-postgres.sh db &&
+        ./scripts/wait-for-rabbitmq.sh rabbitmq &&
+        ./scripts/wait-for-redis.sh redis &&
+        alembic upgrade head &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+      "
+    volumes:
+      - .:/app
+    #ports:
+    #  - "8000:8000"
+    expose:
+      - "8000"  # nginx가 내부에서 접근
+    depends_on:
+      - db
+      - rabbitmq
+      - redis
+    env_file:
+      - .env.dev
+
+  consumer:
+    build:
+      context: .
+    container_name: user_consumer
+    command: >
+      bash -c "
+        ./scripts/wait-for-postgres.sh db &&
+        ./scripts/wait-for-rabbitmq.sh rabbitmq 5672 &&
+        python -m app.event.user_event.user_consumer_runner
+      "
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+      - rabbitmq
+      - redis
+    env_file:
+      - .env.dev
+    environment:
+      - PYTHONPATH=/app
+  nginx:
+    build:
+      context: ./nginx
+    container_name: my_nginx
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

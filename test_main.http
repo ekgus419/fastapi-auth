@@ -1,0 +1,63 @@
+### 회원가입 - 정상
+POST http://127.0.0.1:80/auth/signup
+Content-Type: application/json
+
+{
+  "email": "testuser1@example.com",
+  "password": "password1234",
+  "name": "Test User"
+}
+
+###
+
+### 로그인 - 정상 (일반회원)
+POST http://127.0.0.1:80/auth/signin
+Content-Type: application/json
+
+{
+  "email": "testuser1@example.com",
+  "password": "password1234"
+}
+
+###
+
+### 로그인 - 정상 (관리자)
+POST http://127.0.0.1:80/auth/signin
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "admin1234"
+}
+
+###
+
+### 사용자 단건 조회 (토큰 필요)
+GET http://127.0.0.1:80/users/2
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiZXhwIjoxNzUyNDY0NzU3fQ.yAFb3Am0quomKKzR8uZY53Rnb1mfb6YPSCYPxEweKRk
+Accept: application/json
+
+###
+
+### 사용자 수정 (본인 또는 관리자)
+PUT http://127.0.0.1:80/users/2
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "name": "Updated User",
+  "email": "updated@example.com"
+}
+
+###
+
+### 사용자 탈퇴 (soft delete)
+DELETE http://127.0.0.1:80/users/2
+Authorization: Bearer {{access_token}}
+
+###
+
+### 전체 사용자 조회 (관리자만)
+GET http://127.0.0.1:80/users?page=1&size=10
+Authorization: Bearer {{admin_token}}
+Accept: application/json
