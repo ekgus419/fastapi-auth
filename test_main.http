@@ -34,7 +34,7 @@ Content-Type: application/json
 
 ### 사용자 단건 조회 (토큰 필요)
 GET http://127.0.0.1:80/users/2
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiZXhwIjoxNzUyNDY0NzU3fQ.yAFb3Am0quomKKzR8uZY53Rnb1mfb6YPSCYPxEweKRk
+Authorization: Bearer {{access_token}}
 Accept: application/json
 
 ###
