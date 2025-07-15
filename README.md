@@ -10,9 +10,9 @@ JWT 기반 로그인, 사용자 등록/조회/삭제 기능과 Redis 캐시드 �
 ```
 fastapi-auth/
 ├── alembic/                    # DB 마이그레이션 설정
-│   ├── env.py
+│   ├── env.py                  # Alembic 환경 설정 스크립트
 │   └── versions/
-│       └── 9e6637e6b059_create_users_and_roles_tables.py  # 사용자 및 역할 테이블 생성
+│       └── 9e6637e6b059_create_users_and_roles_tables.py  # 테이블(users, roles) 및 가데이터, 인덱스 생성
 ├── app/
 │   ├── main.py                 # FastAPI 진입점
 │   ├── common/                 # 설정, 예외, 로거, 유틸리티, 보안, Redis
@@ -22,17 +22,22 @@ fastapi-auth/
 │   ├── domain/                 # Pydantic 스키마 및 Enum 정의
 │   ├── event/                  # RabbitMQ 설정
 │       └── user_event/         # 유저 이벤트 처리
-│   ├── repository/             # 추상화된 레포지트 인터페이스
-│       └── persistence/        # 실제 DB 접근 구현창
-│   └── service/                # 비슷니스 로직 서비스
+│   ├── repository/             # 추상화된 레포지토리 인터페이스
+│       └── persistence/        # 실제 DB 접근 구현
+│   └── service/                # 비즈니스 로직 서비스
 ├── tests/                      # 서비스 단위 테스트 모음
-│   ├── auth/
-│   └── user/
+│   ├── auth/                   # 인증 관련 테스트
+│   └── user/                   # 사용자 관련 테스트
 ├── scripts/                    # 테스트 실행 및 서비스 대기 스크립트
 ├── nginx/                      # Nginx 설정 및 Dockerfile
-├── .env.dev                    # 개발용 환경 변수
+├── .env.dev                    # 개발용 환경 변수 설정 파일
+├── .gitignore                  # Git에 포함되지 않을 파일/디렉토리 목록
 ├── Dockerfile                  # FastAPI 앱 빌드용 Dockerfile
+├── README.md                   # 프로젝트 소개 및 설명 문서
+├── README_API_SPEC.md          # API 명세서 문서
+├── alembic.ini                 # Alembic 설정 파일
 ├── docker-compose.yml          # 전체 서비스 실행 정의
+├── pytest.ini                  # Pytest 설정 파일
 ├── requirements.txt            # Python 의존성 명세
 └── test_main.http              # API 테스트 시나리오 (REST Client)
 ```
@@ -144,7 +149,7 @@ FastAPI는 `async/await` 기반의 비동기 처리, 자동 Swagger 문서화, �
 이러한 계층 구조는 추후 로직 확장, 테스트 작성, 인프라 교체(PostgreSQL → MySQL 등) 시에도 최소한의 변경으로 대응할 수 있도록 설계되었습니다.
 
 
-### ✅ 권한 설계
+### 🏁 권한 설계
 
 - 본 프로젝트는 API 접근 권한을 명확히 구분하기 위해 JWT 기반 인증(Authentication)과 역할(Role)에 따른 인가(Authorization) 로직을 별도 모듈로 구현했습니다.  
     - `get_current_user()`: JWT 토큰을 디코딩하여 현재 사용자 객체를 반환합니다.  
@@ -153,7 +158,7 @@ FastAPI는 `async/await` 기반의 비동기 처리, 자동 Swagger 문서화, �
 - 이러한 권한 검증은 FastAPI의 `Depends()`를 활용해 각 API 엔드포인트에 유연하게 주입되며, 실수로 권한이 없는 사용자에게 민감한 기능이 노출되지 않도록 방지합니다.
 
 
-### ✅ DB 및 메시지 큐 설계
+### 🎯 DB 및 메시지 큐 설계
 
 - PostgreSQL, Redis, RabbitMQ는 모두 `docker-compose.yml`에 정의되어 있어 별도의 설치 없이 로컬 개발 환경에서 실행 가능합니다.
 - Alembic을 통해 마이그레이션 되며 다음과 같은 데이터가 자동 생성됩니다:
@@ -161,6 +166,26 @@ FastAPI는 `async/await` 기반의 비동기 처리, 자동 Swagger 문서화, �
     - `users` 테이블: 이메일, 비밀번호, 이름, 역할 ID (FK), 활성화 여부, 생성/수정 시각, soft delete 필드 포함
     - `admin@example.com` 계정이 초기 생성되며, 기본 비밀번호는 `admin1234`로 bcrypt 해시된 상태로 저장됩니다.
 - 사용자와 역할을 분리한 RBAC 구조를 적용하고, Alembic 기반 마이그레이션을 통해 스키마 이력을 명시적으로 관리합니다.
+
+### ✴️ 쿼리 최적화 전략
+
+- `UserService` 에서는 Redis 캐시를 적극 활용하여 사용자 단건 조회 및 사용자 목록 조회 결과를 임시 저장하고 있습니다.
+    - `get_user()`: 사용자 정보가 Redis에 있을 경우 DB 접근 없이 반환하며, 조회 실패 시 DB에서 가져와 캐싱합니다.
+    - `get_users()`: 요청 파라미터에 기반한 해시 키로 Redis 캐시를 구성하여 목록 데이터를 저장하고, 수정/삭제 시 캐시 무효화를 수행합니다.
+- `UserRepositoryImpl` 에서는 N+1 문제를 방지하기 위해 `selectinload(User.role)` 옵션을 일관되게 사용하고 있습니다.
+- 사용자 수를 세는 `count_users()` 쿼리는 `select(...).subquery()` 구조로 작성되어 성능을 고려한 형태입니다.
+
+Alembic 마이그레이션을 통해 `users` 테이블에는 다음과 같은 인덱스가 미리 정의되어 있습니다:
+
+- `idx_users_email`
+- `idx_users_name`
+- `idx_users_role_id`
+- `idx_users_is_active`
+- `idx_users_created_at`
+
+이를 통해 정렬, 필터링, 검색 성능을 일정 수준 보장할 수 있습니다. 
+다만, 고급 동적 필터링이나 다중 컬럼 복합 인덱스 전략은 요구 사항에 포함되어 있지 않아, 
+트래픽 증가나 복잡한 쿼리에 대비한 추가 최적화는 과제로 남아 있습니다. 
 
 ### ⚙️ 비동기 이벤트 처리 (RabbitMQ)
 
