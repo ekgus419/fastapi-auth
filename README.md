@@ -117,13 +117,16 @@ $ docker-compose up --build
 
 - 전체 테스트는 총 **4개 파일**로 구성되어 있으며, `pytest` 기반의 단위 테스트 및 서비스 계층 모킹 테스트를 포함합니다.
 - `tests/auth/`, `tests/user/` 디렉토리로 도메인별 테스트가 분리되어 있으며, 서비스 단의 메서드 호출과 결과를 검증합니다.
-- 실제 API 호출 테스트는 `test_main.http` 로 실행 가능합니다.
+- 실제 API 호출 테스트는 test_main.http 파일을 사용하여 실행할 수 있습니다. 
+  - 서버를 실행한 후 스웨거(Swagger)(http://localhost/docs) 내에서 API 문서를 확인하고 테스트할 수도 있습니다.
 
 ```
-📁 tests/
-├── auth/test_auth_service_with_mock.py
-├── user/test_user_service_with_mock.py
-└── user/test_user_service_with_mock_with_event.py
+📁 fastapi-auth/
+├── 📁 tests/
+│ ├── 📄 auth/test_auth_service_with_mock.py
+│ ├── 📄 user/test_user_service_with_mock.py
+│ ├── 📄 user/test_user_service_with_mock_with_event.py
+└── 📄 test_main.http # API 테스트 시나리오 (REST Client)
 ```
 
 ## 🧪 Docker 기반 테스트 실행 가이드
