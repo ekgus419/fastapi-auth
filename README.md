@@ -143,6 +143,16 @@ FastAPI는 `async/await` 기반의 비동기 처리, 자동 Swagger 문서화, �
 
 이러한 계층 구조는 추후 로직 확장, 테스트 작성, 인프라 교체(PostgreSQL → MySQL 등) 시에도 최소한의 변경으로 대응할 수 있도록 설계되었습니다.
 
+
+### ✅ 권한 설계
+
+- 본 프로젝트는 API 접근 권한을 명확히 구분하기 위해 JWT 기반 인증(Authentication)과 역할(Role)에 따른 인가(Authorization) 로직을 별도 모듈로 구현했습니다.  
+    - `get_current_user()`: JWT 토큰을 디코딩하여 현재 사용자 객체를 반환합니다.  
+    - `admin_required()`: 관리자 역할을 가진 사용자만 접근 가능하도록 제한합니다.
+    - `self_or_admin_required(user_id)`: 본인이거나 관리자일 경우만 접근을 허용합니다.
+- 이러한 권한 검증은 FastAPI의 `Depends()`를 활용해 각 API 엔드포인트에 유연하게 주입되며, 실수로 권한이 없는 사용자에게 민감한 기능이 노출되지 않도록 방지합니다.
+
+
 ### ✅ DB 및 메시지 큐 설계
 
 - PostgreSQL, Redis, RabbitMQ는 모두 `docker-compose.yml`에 정의되어 있어 별도의 설치 없이 로컬 개발 환경에서 실행 가능합니다.
