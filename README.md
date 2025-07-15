@@ -126,6 +126,25 @@ $ docker-compose up --build
 └── user/test_user_service_with_mock_with_event.py
 ```
 
+## 🧪 Docker 기반 테스트 실행 가이드
+
+### ✅ 전제 조건
+
+- FastAPI 서버는 Docker 컨테이너로 이미 실행 중
+- 테스트 대상 API는 컨테이너 내에서 정상적으로 응답 중 (`http://localhost` 등)
+
+---
+
+### ✅ Docker 컨테이너 내부에서 테스트 실행
+
+```python
+# 컨테이너 이름 또는 ID 확인
+$ docker ps
+
+# 컨테이너 내부에서 pytest 실행
+$ docker exec -it my_fastapi pytest tests/ -v
+```
+
 ---
 
 ## 📐 회고
